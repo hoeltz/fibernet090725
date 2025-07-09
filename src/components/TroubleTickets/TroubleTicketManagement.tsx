@@ -9,20 +9,25 @@ import {
   Download, Upload
 } from 'lucide-react';
 import TroubleTicketDetail from './TroubleTicketDetail';
+import CreateTicketModal from './CreateTicketModal';
 import ExportImportModal from '../Common/ExportImportModal';
 
 interface TroubleTicketManagementProps {
   tickets: TroubleTicket[];
   routes: Route[];
   onUpdateTicket: (ticketId: string, updates: Partial<TroubleTicket>) => void;
+  onCreateTicket?: (ticket: Omit<TroubleTicket, 'id'>) => void;
 }
 
 export default function TroubleTicketManagement({ 
   tickets, 
   routes, 
-  onUpdateTicket 
+  onUpdateTicket,
+  onCreateTicket
 }: TroubleTicketManagementProps) {
   const [selectedTicket, setSelectedTicket] = useState<TroubleTicket | null>(null);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [editingTicket, setEditingTicket] = useState<TroubleTicket | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [routeFilter, setRouteFilter] = useState<string>('all');
@@ -32,6 +37,31 @@ export default function TroubleTicketManagement({
   const [editingMaterialData, setEditingMaterialData] = useState<MaterialUsage | null>(null);
   const [showExportModal, setShowExportModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
+
+  const handleCreateTicket = (ticketData: Omit<TroubleTicket, 'id'>) => {
+    if (onCreateTicket) {
+      onCreateTicket(ticketData);
+    }
+    setShowCreateModal(false);
+  };
+
+  const handleEditTicket = (ticket: TroubleTicket) => {
+    setEditingTicket(ticket);
+    setShowCreateModal(true);
+  };
+
+  const handleUpdateTicket = (ticketData: Omit<TroubleTicket, 'id'>) => {
+    if (editingTicket) {
+      onUpdateTicket(editingTicket.id, ticketData);
+      setEditingTicket(null);
+    }
+    setShowCreateModal(false);
+  };
+
+  const handleCloseModal = () => {
+    setShowCreateModal(false);
+    setEditingTicket(null);
+  };
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -303,6 +333,13 @@ export default function TroubleTicketManagement({
               <Upload className="h-4 w-4" />
               <span>Import</span>
             </button>
+            <button
+              onClick={() => setShowCreateModal(true)}
+              className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              <Plus className="h-4 w-4" />
+              <span>Create Ticket</span>
+            </button>
             <div className="text-right">
               <p className="text-sm text-gray-500">Total Tickets</p>
               <p className="text-2xl font-bold text-gray-900">{filteredTickets.length}</p>
@@ -527,6 +564,13 @@ export default function TroubleTicketManagement({
                             >
                               <Eye className="h-4 w-4" />
                               <span>View Details</span>
+                            </button>
+                            <button
+                              onClick={() => handleEditTicket(ticket)}
+                              className="flex items-center space-x-1 px-3 py-1 text-sm text-green-600 hover:text-green-800 hover:bg-green-50 rounded-lg transition-colors print:hidden"
+                            >
+                              <Edit3 className="h-4 w-4" />
+                              <span>Edit</span>
                             </button>
                           </div>
                         </div>
@@ -886,6 +930,16 @@ export default function TroubleTicketManagement({
           <h3 className="text-lg font-medium text-gray-900 mb-2">No trouble tickets found</h3>
           <p className="text-gray-500">Try adjusting your search or filter criteria</p>
         </div>
+      )}
+
+      {/* Create/Edit Ticket Modal */}
+      {showCreateModal && (
+        <CreateTicketModal
+          routes={routes.map(r => ({ id: r.id, name: r.name }))}
+          ticket={editingTicket}
+          onClose={handleCloseModal}
+          onSubmit={editingTicket ? handleUpdateTicket : handleCreateTicket}
+        />
       )}
 
       {/* Export Modal */}
