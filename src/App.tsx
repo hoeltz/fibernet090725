@@ -150,6 +150,7 @@ function App() {
             tickets={troubleTickets}
             routes={routes}
             onUpdateTicket={handleUpdateTicket}
+            onCreateTicket={handleCreateTicket}
           />
         );
       case 'history':

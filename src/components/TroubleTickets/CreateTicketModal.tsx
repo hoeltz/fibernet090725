@@ -8,38 +8,48 @@ import {
 
 interface CreateTicketModalProps {
   routes: Array<{ id: string; name: string }>;
+  ticket?: TroubleTicket | null;
   onClose: () => void;
   onSubmit: (ticket: Omit<TroubleTicket, 'id'>) => void;
 }
 
-export default function CreateTicketModal({ routes, onClose, onSubmit }: CreateTicketModalProps) {
+export default function CreateTicketModal({ routes, ticket, onClose, onSubmit }: CreateTicketModalProps) {
+  const isEditing = !!ticket;
+  
   const [formData, setFormData] = useState({
-    ticketNumber: 'NOC-CGK-',
-    routeId: '',
-    linkId: '',
-    title: '',
-    description: '',
-    priority: 'medium' as TroubleTicket['priority'],
-    category: 'signal-loss' as TroubleTicket['category'],
-    reportedBy: '',
+    ticketNumber: ticket?.ticketNumber || 'NOC-CGK-',
+    routeId: ticket?.routeId || '',
+    linkId: ticket?.linkId || '',
+    title: ticket?.title || '',
+    description: ticket?.description || '',
+    priority: ticket?.priority || 'medium' as TroubleTicket['priority'],
+    category: ticket?.category || 'signal-loss' as TroubleTicket['category'],
+    reportedBy: ticket?.reportedBy || '',
     reporterContact: '',
     reporterEmail: '',
-    personHandling: '',
+    personHandling: ticket?.personHandling || '',
     customerAffected: '',
     serviceImpact: '',
-    impact: 'medium' as TroubleTicket['impact'],
+    impact: ticket?.impact || 'medium' as TroubleTicket['impact'],
     location: {
-      longitude: 0,
-      latitude: 0,
-      address: '',
-      landmark: ''
+      longitude: ticket?.location.longitude || 0,
+      latitude: ticket?.location.latitude || 0,
+      address: ticket?.location.address || '',
+      landmark: ticket?.location.landmark || ''
     },
-    slaTarget: 4,
-    estimatedResolution: '',
+    slaTarget: ticket?.slaTarget || 4,
+    estimatedResolution: ticket?.estimatedResolution || '',
     urgency: 'medium' as 'low' | 'medium' | 'high' | 'critical',
     businessImpact: '',
-    rootCause: '',
-    temporaryWorkaround: ''
+    rootCause: ticket?.rootCause || '',
+    temporaryWorkaround: '',
+    repairType: ticket?.repairType || 'permanent' as 'permanent' | 'temporary',
+    coresSpliced: ticket?.coresSpliced || 0,
+    problemCoordinates: {
+      longitude: ticket?.problemCoordinates?.longitude || 0,
+      latitude: ticket?.problemCoordinates?.latitude || 0
+    },
+    trafficImpacted: ticket?.trafficImpacted || ''
   });
 
   const [activities, setActivities] = useState<Array<{
@@ -48,6 +58,21 @@ export default function CreateTicketModal({ routes, onClose, onSubmit }: CreateT
     duration: number;
     performedBy: string;
   }>>([]);
+
+  // Initialize activities for editing
+  React.useEffect(() => {
+    if (ticket && ticket.activities) {
+      const editableActivities = ticket.activities
+        .filter(activity => activity.type !== 'created') // Exclude system-generated activities
+        .map(activity => ({
+          type: activity.type,
+          description: activity.description,
+          duration: activity.duration || 0,
+          performedBy: activity.performedBy
+        }));
+      setActivities(editableActivities);
+    }
+  }, [ticket]);
 
   const activityTypes = [
     { value: 'prepare', label: 'Prepare', icon: Settings, description: 'Equipment preparation and briefing' },
@@ -81,17 +106,27 @@ export default function CreateTicketModal({ routes, onClose, onSubmit }: CreateT
     
     const now = new Date().toISOString();
     
-    // Create initial activity
-    const initialActivities: TroubleTicketActivity[] = [
-      {
+    // Create activities array
+    const ticketActivities: TroubleTicketActivity[] = [];
+    
+    // Add creation activity only for new tickets
+    if (!isEditing) {
+      ticketActivities.push({
         id: `activity-${Date.now()}`,
         ticketId: '', // Will be set when ticket is created
         type: 'created',
-        description: 'Ticket created',
+        description: isEditing ? 'Ticket updated' : 'Ticket created',
         performedBy: formData.reportedBy,
         timestamp: now
-      },
-      ...activities.map((activity, index) => ({
+      });
+    } else {
+      // For editing, preserve existing activities and add new ones
+      ticketActivities.push(...(ticket?.activities || []));
+    }
+    
+    // Add new activities
+    activities.forEach((activity, index) => {
+      ticketActivities.push({
         id: `activity-${Date.now()}-${index}`,
         ticketId: '', // Will be set when ticket is created
         type: activity.type,
@@ -99,31 +134,41 @@ export default function CreateTicketModal({ routes, onClose, onSubmit }: CreateT
         performedBy: activity.performedBy,
         timestamp: now,
         duration: activity.duration
-      }))
-    ];
+      });
+    });
 
-    const ticket: Omit<TroubleTicket, 'id'> = {
+    const ticketData: Omit<TroubleTicket, 'id'> = {
       ticketNumber: formData.ticketNumber,
       routeId: formData.routeId,
       linkId: formData.linkId || undefined,
       title: formData.title,
       description: formData.description,
       priority: formData.priority,
-      status: 'open',
+      status: isEditing ? (ticket?.status || 'open') : 'open',
       category: formData.category,
       reportedBy: formData.reportedBy,
       personHandling: formData.personHandling,
-      createdAt: now,
+      createdAt: isEditing ? (ticket?.createdAt || now) : now,
       updatedAt: now,
+      resolvedAt: ticket?.resolvedAt,
+      closedAt: ticket?.closedAt,
       estimatedResolution: formData.estimatedResolution,
       impact: formData.impact,
       location: formData.location,
-      activities: initialActivities,
+      activities: ticketActivities,
       slaTarget: formData.slaTarget,
-      slaStatus: 'within'
+      slaStatus: ticket?.slaStatus || 'within',
+      repairType: formData.repairType,
+      coresSpliced: formData.coresSpliced,
+      problemCoordinates: formData.problemCoordinates,
+      rootCause: formData.rootCause,
+      trafficImpacted: formData.trafficImpacted,
+      photos: ticket?.photos || [],
+      materialUsage: ticket?.materialUsage || [],
+      totalDuration: ticket?.totalDuration
     };
 
-    onSubmit(ticket);
+    onSubmit(ticketData);
   };
 
   return (
@@ -132,8 +177,15 @@ export default function CreateTicketModal({ routes, onClose, onSubmit }: CreateT
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
           <div>
-            <h2 className="text-xl font-bold text-gray-900">Create New Trouble Ticket</h2>
-            <p className="text-sm text-gray-600 mt-1">Fill in the details to create a new network incident ticket</p>
+            <h2 className="text-xl font-bold text-gray-900">
+              {isEditing ? 'Edit Trouble Ticket' : 'Create New Trouble Ticket'}
+            </h2>
+            <p className="text-sm text-gray-600 mt-1">
+              {isEditing 
+                ? 'Update the ticket information and add new activities' 
+                : 'Fill in the details to create a new network incident ticket'
+              }
+            </p>
           </div>
           <button
             onClick={onClose}
@@ -162,9 +214,12 @@ export default function CreateTicketModal({ routes, onClose, onSubmit }: CreateT
                   onChange={(e) => setFormData({ ...formData, ticketNumber: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   placeholder="NOC-CGK-YYYYMMDD-XXX"
+                  disabled={isEditing}
                   required
                 />
-                <p className="text-xs text-gray-500 mt-1">Complete the ticket number after NOC-CGK- prefix</p>
+                {!isEditing && (
+                  <p className="text-xs text-gray-500 mt-1">Complete the ticket number after NOC-CGK- prefix</p>
+                )}
               </div>
 
               <div>
@@ -250,6 +305,35 @@ export default function CreateTicketModal({ routes, onClose, onSubmit }: CreateT
                   <option value="high">High - Urgent response needed</option>
                   <option value="critical">Critical - Immediate response</option>
                 </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Repair Type *
+                </label>
+                <select
+                  value={formData.repairType}
+                  onChange={(e) => setFormData({ ...formData, repairType: e.target.value as 'permanent' | 'temporary' })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  required
+                >
+                  <option value="permanent">Permanent</option>
+                  <option value="temporary">Temporary</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Cores Spliced
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  value={formData.coresSpliced}
+                  onChange={(e) => setFormData({ ...formData, coresSpliced: parseInt(e.target.value) || 0 })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="0"
+                />
               </div>
             </div>
 
@@ -408,6 +492,19 @@ export default function CreateTicketModal({ routes, onClose, onSubmit }: CreateT
                   placeholder="Describe business impact (revenue loss, productivity impact, etc.)"
                 />
               </div>
+
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Traffic Impacted
+                </label>
+                <textarea
+                  value={formData.trafficImpacted}
+                  onChange={(e) => setFormData({ ...formData, trafficImpacted: e.target.value })}
+                  rows={2}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Describe which traffic/services are impacted"
+                />
+              </div>
             </div>
           </div>
 
@@ -448,6 +545,42 @@ export default function CreateTicketModal({ routes, onClose, onSubmit }: CreateT
                   onChange={(e) => setFormData({ 
                     ...formData, 
                     location: { ...formData.location, latitude: parseFloat(e.target.value) || 0 }
+                  })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="-6.2088"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Problem Longitude *
+                </label>
+                <input
+                  type="number"
+                  step="any"
+                  value={formData.problemCoordinates.longitude}
+                  onChange={(e) => setFormData({ 
+                    ...formData, 
+                    problemCoordinates: { ...formData.problemCoordinates, longitude: parseFloat(e.target.value) || 0 }
+                  })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="106.8456"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Problem Latitude *
+                </label>
+                <input
+                  type="number"
+                  step="any"
+                  value={formData.problemCoordinates.latitude}
+                  onChange={(e) => setFormData({ 
+                    ...formData, 
+                    problemCoordinates: { ...formData.problemCoordinates, latitude: parseFloat(e.target.value) || 0 }
                   })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   placeholder="-6.2088"
@@ -562,7 +695,7 @@ export default function CreateTicketModal({ routes, onClose, onSubmit }: CreateT
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-gray-900 flex items-center">
                 <Activity className="h-5 w-5 mr-2 text-indigo-600" />
-                Planned Resolution Activities
+                {isEditing ? 'Add New Activities' : 'Planned Resolution Activities'}
               </h3>
               <button
                 type="button"
@@ -643,7 +776,12 @@ export default function CreateTicketModal({ routes, onClose, onSubmit }: CreateT
               {activities.length === 0 && (
                 <div className="text-center py-8 text-gray-500">
                   <Activity className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                  <p className="text-sm">No activities planned yet. Click "Add Activity" to start planning resolution steps.</p>
+                  <p className="text-sm">
+                    {isEditing 
+                      ? 'No new activities to add. Click "Add Activity" to add new resolution steps.' 
+                      : 'No activities planned yet. Click "Add Activity" to start planning resolution steps.'
+                    }
+                  </p>
                 </div>
               )}
             </div>
@@ -663,7 +801,7 @@ export default function CreateTicketModal({ routes, onClose, onSubmit }: CreateT
               className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
             >
               <AlertTriangle className="h-4 w-4" />
-              <span>Create Ticket</span>
+              <span>{isEditing ? 'Update Ticket' : 'Create Ticket'}</span>
             </button>
           </div>
         </form>
