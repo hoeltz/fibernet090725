@@ -6,7 +6,7 @@ import {
   Search, Package, Cable, Wrench, Image, 
   FileText, ChevronDown, ChevronRight, Edit3,
   Save, X, Plus, Trash2, Navigation, Printer,
-  Download
+  Download, Upload
 } from 'lucide-react';
 import TroubleTicketDetail from './TroubleTicketDetail';
 import ExportImportModal from '../Common/ExportImportModal';
