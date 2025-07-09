@@ -5,7 +5,8 @@ import {
   MapPin, Activity, CheckCircle, MessageSquare, 
   Wrench, TestTube, UserPlus, TrendingUp, Edit3,
   Save, X, Plus, Settings, Car, Shield, Timer,
-  Target, BarChart3, Zap, Signal, Trash2
+  Target, BarChart3, Zap, Signal, Trash2, Send,
+  Mail, MessageCircle, FileText, Download
 } from 'lucide-react';
 
 interface TroubleTicketDetailProps {
@@ -20,6 +21,10 @@ export default function TroubleTicketDetail({ ticket, routes, onBack, onUpdate }
   const [editedTicket, setEditedTicket] = useState<TroubleTicket>(ticket);
   const [newActivity, setNewActivity] = useState<Partial<TroubleTicketActivity> | null>(null);
   const [editingActivityId, setEditingActivityId] = useState<string | null>(null);
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [reportType, setReportType] = useState<'whatsapp' | 'email'>('email');
+  const [reportRecipient, setReportRecipient] = useState('');
+  const [reportMessage, setReportMessage] = useState('');
 
   const getRouteName = (routeId: string) => {
     const route = routes.find(r => r.id === routeId);
@@ -253,6 +258,103 @@ export default function TroubleTicketDetail({ ticket, routes, onBack, onUpdate }
     setEditingActivityId(null);
   };
 
+  const generateOutageReport = () => {
+    const routeName = getRouteName(editedTicket.routeId);
+    const duration = formatDuration(calculateTotalDuration());
+    const activityDuration = formatDuration(calculateActivityDuration());
+    
+    const activitiesWithResults = editedTicket.activities
+      .filter(activity => activity.type !== 'created')
+      .map(activity => {
+        const activityResult = activity.details?.testResults || activity.details?.newValue || 'Completed successfully';
+        return `${activity.type.replace('-', ' ').toUpperCase()}: ${activity.description}\nResult: ${activityResult}\nDuration: ${activity.duration || 0} minutes\nPerformed by: ${activity.performedBy}\n`;
+      }).join('\n');
+
+    return `REASON FOR OUTAGE REPORT
+
+Ticket Number: ${editedTicket.ticketNumber}
+Route: ${routeName}
+Title: ${editedTicket.title}
+Priority: ${editedTicket.priority.toUpperCase()}
+Status: ${editedTicket.status.toUpperCase()}
+
+INCIDENT DETAILS:
+Description: ${editedTicket.description}
+Root Cause: ${editedTicket.rootCause}
+Traffic Impacted: ${editedTicket.trafficImpacted}
+Location: ${editedTicket.location.address}
+Coordinates: ${editedTicket.problemCoordinates.latitude}, ${editedTicket.problemCoordinates.longitude}
+
+TIMELINE & ACTIVITIES:
+Created: ${new Date(editedTicket.createdAt).toLocaleString()}
+${editedTicket.resolvedAt ? `Resolved: ${new Date(editedTicket.resolvedAt).toLocaleString()}` : 'Status: In Progress'}
+Total Duration: ${duration}
+Work Duration: ${activityDuration}
+Cores Spliced: ${editedTicket.coresSpliced}
+Repair Type: ${editedTicket.repairType.toUpperCase()}
+
+DETAILED ACTIVITIES:
+${activitiesWithResults}
+
+MATERIALS USED:
+${editedTicket.materialUsage.map(material => 
+  `- ${material.materialName} (${material.quantity} ${material.unit}) - ${material.location || 'N/A'}`
+).join('\n') || 'No materials used'}
+
+PERSONNEL:
+Reported by: ${editedTicket.reportedBy}
+Handled by: ${editedTicket.personHandling || 'N/A'}
+Assigned to: ${editedTicket.assignedTo || 'N/A'}
+
+SLA STATUS: ${editedTicket.slaStatus?.toUpperCase() || 'N/A'}
+SLA Target: ${editedTicket.slaTarget || 'N/A'} hours
+
+Report generated on: ${new Date().toLocaleString()}
+
+---
+FiberNet Network Operations Center
+`;
+  };
+
+  const handleSendReport = () => {
+    const report = generateOutageReport();
+    
+    if (reportType === 'whatsapp') {
+      // Format phone number (remove non-digits and add country code if needed)
+      let phoneNumber = reportRecipient.replace(/\D/g, '');
+      if (!phoneNumber.startsWith('62') && phoneNumber.startsWith('0')) {
+        phoneNumber = '62' + phoneNumber.substring(1);
+      }
+      
+      const whatsappMessage = encodeURIComponent(reportMessage + '\n\n' + report);
+      const whatsappUrl = `https://wa.me/${phoneNumber}?text=${whatsappMessage}`;
+      window.open(whatsappUrl, '_blank');
+    } else {
+      // Email
+      const subject = encodeURIComponent(`Reason For Outage Report - ${editedTicket.ticketNumber}`);
+      const body = encodeURIComponent(reportMessage + '\n\n' + report);
+      const mailtoUrl = `mailto:${reportRecipient}?subject=${subject}&body=${body}`;
+      window.open(mailtoUrl);
+    }
+    
+    setShowReportModal(false);
+    setReportRecipient('');
+    setReportMessage('');
+  };
+
+  const downloadReport = () => {
+    const report = generateOutageReport();
+    const blob = new Blob([report], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `outage_report_${editedTicket.ticketNumber}_${new Date().toISOString().split('T')[0]}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
   const updateActivity = (activityId: string, field: string, value: any) => {
     setEditedTicket({
       ...editedTicket,
@@ -394,6 +496,22 @@ export default function TroubleTicketDetail({ ticket, routes, onBack, onUpdate }
           <div className="text-right">
             <p className="text-sm text-gray-500">Ticket Number</p>
             <p className="font-mono text-lg font-medium text-gray-900">{editedTicket.ticketNumber}</p>
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={() => setShowReportModal(true)}
+                className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+              >
+                <Send className="h-4 w-4" />
+                <span>Send Report</span>
+              </button>
+              <button
+                onClick={downloadReport}
+                className="flex items-center space-x-2 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+              >
+                <Download className="h-4 w-4" />
+                <span>Download</span>
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -693,6 +811,20 @@ export default function TroubleTicketDetail({ ticket, routes, onBack, onUpdate }
                       placeholder="Describe the activity performed"
                     />
                   </div>
+                  
+                  <div>
+                    <label className="block text-xs text-blue-700 mb-1">Activity Result</label>
+                    <textarea
+                      value={newActivity.details?.testResults || ''}
+                      onChange={(e) => setNewActivity({ 
+                        ...newActivity, 
+                        details: { ...newActivity.details, testResults: e.target.value }
+                      })}
+                      rows={2}
+                      className="w-full px-2 py-1 border border-blue-300 rounded text-sm focus:ring-1 focus:ring-blue-500"
+                      placeholder="Result or outcome of this activity"
+                    />
+                  </div>
                 </div>
               </div>
             )}
@@ -818,6 +950,16 @@ export default function TroubleTicketDetail({ ticket, routes, onBack, onUpdate }
                             rows={2}
                             className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-1 focus:ring-blue-500"
                           />
+                          <textarea
+                            value={activity.details?.testResults || ''}
+                            onChange={(e) => updateActivity(activity.id, 'details', {
+                              ...activity.details,
+                              testResults: e.target.value
+                            })}
+                            rows={2}
+                            className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-1 focus:ring-blue-500"
+                            placeholder="Activity result or outcome"
+                          />
                           <input
                             type="text"
                             value={activity.performedBy}
@@ -829,6 +971,12 @@ export default function TroubleTicketDetail({ ticket, routes, onBack, onUpdate }
                       ) : (
                         <>
                           <p className="text-sm text-gray-700 mb-2">{activity.description}</p>
+                          {activity.details?.testResults && (
+                            <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded">
+                              <p className="text-xs font-medium text-green-800">Result:</p>
+                              <p className="text-sm text-green-700">{activity.details.testResults}</p>
+                            </div>
+                          )}
                           <div className="flex items-center justify-between">
                             <span className="text-xs text-gray-500">by {activity.performedBy}</span>
                           </div>
@@ -840,11 +988,6 @@ export default function TroubleTicketDetail({ ticket, routes, onBack, onUpdate }
                           {activity.details.location && (
                             <p className="text-xs text-gray-600">
                               <strong>Location:</strong> {activity.details.location}
-                            </p>
-                          )}
-                          {activity.details.testResults && (
-                            <p className="text-xs text-gray-600">
-                              <strong>Test Results:</strong> {activity.details.testResults}
                             </p>
                           )}
                           {activity.details.oldValue && activity.details.newValue && (
@@ -867,6 +1010,133 @@ export default function TroubleTicketDetail({ ticket, routes, onBack, onUpdate }
           </div>
         </div>
       </div>
+
+      {/* Report Modal */}
+      {showReportModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-gray-900">Send Outage Report</h3>
+                <button
+                  onClick={() => setShowReportModal(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+            </div>
+            
+            <div className="p-6 space-y-6">
+              {/* Report Type Selection */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-3">
+                  Send Method
+                </label>
+                <div className="flex space-x-4">
+                  <button
+                    onClick={() => setReportType('email')}
+                    className={`flex items-center space-x-2 px-4 py-2 rounded-lg border transition-colors ${
+                      reportType === 'email'
+                        ? 'border-blue-500 bg-blue-50 text-blue-700'
+                        : 'border-gray-300 hover:border-gray-400'
+                    }`}
+                  >
+                    <Mail className="h-4 w-4" />
+                    <span>Email</span>
+                  </button>
+                  <button
+                    onClick={() => setReportType('whatsapp')}
+                    className={`flex items-center space-x-2 px-4 py-2 rounded-lg border transition-colors ${
+                      reportType === 'whatsapp'
+                        ? 'border-green-500 bg-green-50 text-green-700'
+                        : 'border-gray-300 hover:border-gray-400'
+                    }`}
+                  >
+                    <MessageCircle className="h-4 w-4" />
+                    <span>WhatsApp</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Recipient */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  {reportType === 'email' ? 'Email Address' : 'Phone Number'}
+                </label>
+                <input
+                  type={reportType === 'email' ? 'email' : 'tel'}
+                  value={reportRecipient}
+                  onChange={(e) => setReportRecipient(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder={reportType === 'email' ? 'recipient@company.com' : '+62812345678 or 0812345678'}
+                  required
+                />
+                {reportType === 'whatsapp' && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    Format: +62812345678 or 0812345678 (will be converted to international format)
+                  </p>
+                )}
+              </div>
+
+              {/* Custom Message */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Additional Message (Optional)
+                </label>
+                <textarea
+                  value={reportMessage}
+                  onChange={(e) => setReportMessage(e.target.value)}
+                  rows={3}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Add any additional context or message..."
+                />
+              </div>
+
+              {/* Report Preview */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Report Preview
+                </label>
+                <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 max-h-40 overflow-y-auto">
+                  <pre className="text-xs text-gray-700 whitespace-pre-wrap">
+                    {generateOutageReport().substring(0, 500)}...
+                  </pre>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
+                <button
+                  onClick={() => setShowReportModal(false)}
+                  className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={downloadReport}
+                  className="flex items-center space-x-2 px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  <Download className="h-4 w-4" />
+                  <span>Download</span>
+                </button>
+                <button
+                  onClick={handleSendReport}
+                  disabled={!reportRecipient.trim()}
+                  className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors ${
+                    reportRecipient.trim()
+                      ? 'bg-blue-600 text-white hover:bg-blue-700'
+                      : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  }`}
+                >
+                  <Send className="h-4 w-4" />
+                  <span>Send Report</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
