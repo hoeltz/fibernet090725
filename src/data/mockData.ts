@@ -1,4 +1,4 @@
-import { Route, MaintenanceRecord, Alert, SLAData, SLATarget, TroubleTicket, TroubleTicketActivity, Link, NetworkAsset, MaterialUsage } from '../types';
+import { Route, MaintenanceRecord, Alert, SLAData, SLATarget, TroubleTicket, TroubleTicketActivity, Link, NetworkAsset, MaterialUsage, NetworkPatrol } from '../types';
 
 export const routes: Route[] = [
   {
@@ -1285,5 +1285,247 @@ export const slaTargets: SLATarget[] = [
     maintenanceTime: 1.8, // < 6 hours = achieve
     status: getSLAStatus(1.8),
     trend: calculateTrend(99.5, previousWeekSLA['route-f'], 1.8)
+  }
+];
+
+// Mock Network Patrol Data
+export const networkPatrols: NetworkPatrol[] = [
+  {
+    id: 'patrol-001',
+    patrolNumber: 'PATROL-20240220-001',
+    routeId: 'route-a',
+    type: 'routine',
+    status: 'completed',
+    priority: 'medium',
+    title: 'Weekly Route A Inspection',
+    description: 'Regular weekly inspection of Route A infrastructure and cable conditions',
+    patrolDate: '2024-02-20',
+    startTime: '08:00',
+    endTime: '16:30',
+    patrolTeam: ['John Smith', 'Mike Wilson'],
+    vehicleInfo: {
+      plateNumber: 'B 1234 ABC',
+      type: 'Pickup Truck'
+    },
+    weather: {
+      condition: 'sunny',
+      temperature: 28,
+      notes: 'Clear visibility, good conditions for inspection'
+    },
+    findings: [
+      {
+        id: 'finding-001',
+        patrolId: 'patrol-001',
+        type: 'third-party-activity',
+        severity: 'high',
+        title: 'Construction Activity Near Cable Route',
+        description: 'Road construction work detected 2 meters from fiber cable route. Heavy machinery present.',
+        location: {
+          longitude: 106.8456,
+          latitude: -6.2088,
+          address: 'Jl. Sudirman No. 125, Jakarta Pusat',
+          landmark: 'Near Plaza Indonesia',
+          kmPost: 'KM 12.5'
+        },
+        photos: [
+          {
+            id: 'photo-f001-1',
+            url: 'https://images.pexels.com/photos/1108101/pexels-photo-1108101.jpeg',
+            caption: 'Construction equipment near cable route',
+            timestamp: '2024-02-20T10:30:00Z'
+          }
+        ],
+        thirdPartyDetails: {
+          company: 'PT Konstruksi Jaya',
+          contactPerson: 'Budi Santoso (081234567890)',
+          activityType: 'Road widening project',
+          permitNumber: 'PERMIT-2024-0215',
+          estimatedDuration: '2 weeks'
+        },
+        actionRequired: 'coordination',
+        status: 'in-progress',
+        assignedTo: 'John Smith',
+        createdAt: '2024-02-20T10:30:00Z',
+        updatedAt: '2024-02-20T10:30:00Z'
+      },
+      {
+        id: 'finding-002',
+        patrolId: 'patrol-001',
+        type: 'cable-exposure',
+        severity: 'medium',
+        title: 'Cable Exposure at KM 15.2',
+        description: 'Fiber cable partially exposed due to soil erosion after recent rain',
+        location: {
+          longitude: 106.8567,
+          latitude: -6.2234,
+          address: 'Jl. Gatot Subroto No. 78, Jakarta Selatan',
+          landmark: 'Near Kuningan City Mall',
+          kmPost: 'KM 15.2'
+        },
+        photos: [
+          {
+            id: 'photo-f002-1',
+            url: 'https://images.pexels.com/photos/159306/fiber-optic-cable-fiber-glass-fiber-159306.jpeg',
+            caption: 'Exposed cable section',
+            timestamp: '2024-02-20T14:15:00Z'
+          }
+        ],
+        measurements: {
+          cableDepth: 45,
+          exposureLength: 1.5,
+          damageExtent: 'Outer sheath intact, no fiber damage detected'
+        },
+        actionRequired: 'scheduled',
+        status: 'open',
+        assignedTo: 'Mike Wilson',
+        createdAt: '2024-02-20T14:15:00Z',
+        updatedAt: '2024-02-20T14:15:00Z'
+      }
+    ],
+    measurements: [
+      {
+        id: 'measurement-001',
+        patrolId: 'patrol-001',
+        routeId: 'route-a',
+        linkId: 'link-a1',
+        measurementType: 'otdr',
+        location: {
+          longitude: 106.8456,
+          latitude: -6.2088,
+          address: 'Central Hub - Equipment Room',
+          kmPost: 'KM 0.0'
+        },
+        results: {
+          totalLoss: 2.3,
+          reflectance: -45.2,
+          length: 12.5,
+          fiberCondition: 'good',
+          anomalies: ['Minor splice loss at 8.2km'],
+          recommendations: 'Monitor splice point, consider re-splicing if loss increases'
+        },
+        equipment: {
+          deviceModel: 'Fluke OptiFiber Pro OTDR',
+          serialNumber: 'FLK-2024-001',
+          calibrationDate: '2024-01-15'
+        },
+        performedBy: 'John Smith',
+        timestamp: '2024-02-20T09:30:00Z',
+        attachments: [
+          {
+            id: 'att-001',
+            type: 'otdr-trace',
+            url: '/attachments/otdr-trace-001.pdf',
+            filename: 'OTDR_RouteA_Link1_20240220.pdf'
+          }
+        ]
+      }
+    ],
+    summary: 'Routine patrol completed successfully. Two findings identified: construction activity requiring coordination and cable exposure requiring scheduled repair. Overall route condition is good with minor maintenance needs.',
+    recommendations: 'Coordinate with construction company for cable protection measures. Schedule cable re-burial at KM 15.2. Continue weekly patrols during construction period.',
+    nextPatrolDate: '2024-02-27',
+    createdBy: 'John Smith',
+    createdAt: '2024-02-20T08:00:00Z',
+    updatedAt: '2024-02-20T16:30:00Z',
+    completedAt: '2024-02-20T16:30:00Z'
+  },
+  {
+    id: 'patrol-002',
+    patrolNumber: 'PATROL-20240221-002',
+    routeId: 'route-e',
+    type: 'emergency',
+    status: 'in-progress',
+    priority: 'critical',
+    title: 'Emergency Response - Route E Signal Loss',
+    description: 'Emergency patrol to investigate critical signal loss on Route E',
+    patrolDate: '2024-02-21',
+    startTime: '06:00',
+    endTime: '',
+    patrolTeam: ['Sarah Johnson', 'Tom Anderson'],
+    vehicleInfo: {
+      plateNumber: 'B 5678 DEF',
+      type: 'Emergency Response Van'
+    },
+    weather: {
+      condition: 'rainy',
+      temperature: 24,
+      notes: 'Heavy rain affecting visibility and access'
+    },
+    findings: [
+      {
+        id: 'finding-003',
+        patrolId: 'patrol-002',
+        type: 'infrastructure-damage',
+        severity: 'critical',
+        title: 'Fiber Cable Cut at Joint Closure',
+        description: 'Complete fiber cut detected at joint closure CHE-008. Water ingress evident.',
+        location: {
+          longitude: 106.8123,
+          latitude: -6.1756,
+          address: 'Jl. MH Thamrin No. 1, Jakarta Pusat',
+          landmark: 'Hotel Indonesia Roundabout',
+          kmPost: 'KM 14.2'
+        },
+        photos: [
+          {
+            id: 'photo-f003-1',
+            url: 'https://images.pexels.com/photos/159306/fiber-optic-cable-fiber-glass-fiber-159306.jpeg',
+            caption: 'Damaged joint closure with water ingress',
+            timestamp: '2024-02-21T08:30:00Z'
+          }
+        ],
+        measurements: {
+          signalLoss: 15.0,
+          damageExtent: 'Complete fiber break, 12 cores affected'
+        },
+        actionRequired: 'immediate',
+        status: 'in-progress',
+        assignedTo: 'Sarah Johnson',
+        createdAt: '2024-02-21T08:30:00Z',
+        updatedAt: '2024-02-21T08:30:00Z',
+        maintenanceTicketId: 'maint-emergency-001'
+      }
+    ],
+    measurements: [
+      {
+        id: 'measurement-002',
+        patrolId: 'patrol-002',
+        routeId: 'route-e',
+        linkId: 'link-e1',
+        measurementType: 'otdr',
+        location: {
+          longitude: 106.8123,
+          latitude: -6.1756,
+          address: 'Joint Closure CHE-008',
+          kmPost: 'KM 14.2'
+        },
+        results: {
+          totalLoss: 15.0,
+          length: 14.2,
+          fiberCondition: 'damaged',
+          anomalies: ['Complete break at 14.2km', 'High reflectance indicating water ingress'],
+          recommendations: 'Immediate repair required - replace joint closure and re-splice affected fibers'
+        },
+        equipment: {
+          deviceModel: 'Anritsu MT9083 OTDR',
+          serialNumber: 'ANR-2024-002',
+          calibrationDate: '2024-02-01'
+        },
+        performedBy: 'Tom Anderson',
+        timestamp: '2024-02-21T09:00:00Z',
+        attachments: [
+          {
+            id: 'att-002',
+            type: 'otdr-trace',
+            url: '/attachments/otdr-emergency-002.pdf',
+            filename: 'OTDR_Emergency_RouteE_20240221.pdf'
+          }
+        ]
+      }
+    ],
+    summary: 'Emergency patrol in progress. Critical fiber break identified at CHE-008 joint closure. Immediate repair initiated.',
+    recommendations: 'Replace damaged joint closure, re-splice 12 affected fiber cores, implement better waterproofing measures.',
+    createdBy: 'Network Operations Center',
+    createdAt: '2024-02-21T06:00:00Z',
+    updatedAt: '2024-02-21T09:00:00Z'
   }
 ];
