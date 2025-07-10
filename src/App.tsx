@@ -26,6 +26,7 @@ function App() {
   const [routes, setRoutes] = useState(initialRoutes);
   const [troubleTickets, setTroubleTickets] = useState(initialTroubleTickets);
   const [networkAssets, setNetworkAssets] = useState(initialNetworkAssets);
+  const [networkPatrols, setNetworkPatrols] = useState(initialNetworkPatrols);
   const [showMaintenanceExportModal, setShowMaintenanceExportModal] = useState(false);
   const [showMaintenanceImportModal, setShowMaintenanceImportModal] = useState(false);
 
