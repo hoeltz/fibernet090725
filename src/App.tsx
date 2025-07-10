@@ -26,7 +26,6 @@ function App() {
   const [routes, setRoutes] = useState(initialRoutes);
   const [troubleTickets, setTroubleTickets] = useState(initialTroubleTickets);
   const [networkAssets, setNetworkAssets] = useState(initialNetworkAssets);
-  const [networkPatrols, setNetworkPatrols] = useState(initialNetworkPatrols);
   const [showMaintenanceExportModal, setShowMaintenanceExportModal] = useState(false);
   const [showMaintenanceImportModal, setShowMaintenanceImportModal] = useState(false);
 
@@ -143,6 +142,16 @@ function App() {
             onCreateAsset={handleCreateAsset}
             onUpdateAsset={handleUpdateAsset}
             onDeleteAsset={handleDeleteAsset}
+          />
+        );
+      case 'patrol':
+        return (
+          <NetworkPatrolManagement
+            routes={routes}
+            patrols={networkPatrols}
+            onCreatePatrol={handleCreatePatrol}
+            onUpdatePatrol={handleUpdatePatrol}
+            onCreateMaintenance={handleScheduleMaintenance}
           />
         );
       case 'tickets':
