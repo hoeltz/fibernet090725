@@ -245,3 +245,115 @@ export interface NetworkAsset {
   createdBy: string;
   lastModifiedBy: string;
 }
+
+// Network Patrol Types
+export interface PatrolFinding {
+  id: string;
+  patrolId: string;
+  type: 'third-party-activity' | 'cable-exposure' | 'infrastructure-damage' | 'unauthorized-access' | 'environmental-hazard' | 'equipment-theft' | 'vandalism' | 'construction-impact' | 'vegetation-growth' | 'other';
+  severity: 'low' | 'medium' | 'high' | 'critical';
+  title: string;
+  description: string;
+  location: {
+    longitude: number;
+    latitude: number;
+    address: string;
+    landmark?: string;
+    kmPost?: string; // Kilometer post reference
+  };
+  photos: Array<{
+    id: string;
+    url: string;
+    caption: string;
+    timestamp: string;
+  }>;
+  measurements?: {
+    cableDepth?: number; // in cm
+    exposureLength?: number; // in meters
+    damageExtent?: string;
+    signalLoss?: number; // in dB
+    otdrResults?: string;
+  };
+  thirdPartyDetails?: {
+    company: string;
+    contactPerson: string;
+    activityType: string;
+    permitNumber?: string;
+    estimatedDuration?: string;
+  };
+  actionRequired: 'immediate' | 'scheduled' | 'monitoring' | 'coordination' | 'none';
+  status: 'open' | 'in-progress' | 'resolved' | 'escalated';
+  assignedTo?: string;
+  createdAt: string;
+  updatedAt: string;
+  resolvedAt?: string;
+  maintenanceTicketId?: string; // Link to maintenance record
+}
+
+export interface CableMeasurement {
+  id: string;
+  patrolId: string;
+  routeId: string;
+  linkId?: string;
+  measurementType: 'otdr' | 'power-meter' | 'visual-inspection' | 'continuity-test' | 'insertion-loss';
+  location: {
+    longitude: number;
+    latitude: number;
+    address: string;
+    kmPost?: string;
+  };
+  results: {
+    totalLoss?: number; // in dB
+    reflectance?: number; // in dB
+    length?: number; // in km
+    fiberCondition: 'excellent' | 'good' | 'fair' | 'poor' | 'damaged';
+    anomalies?: string[];
+    recommendations?: string;
+  };
+  equipment: {
+    deviceModel: string;
+    serialNumber: string;
+    calibrationDate: string;
+  };
+  performedBy: string;
+  timestamp: string;
+  attachments: Array<{
+    id: string;
+    type: 'otdr-trace' | 'photo' | 'report' | 'other';
+    url: string;
+    filename: string;
+  }>;
+}
+
+export interface NetworkPatrol {
+  id: string;
+  patrolNumber: string; // PATROL-YYYYMMDD-XXX format
+  routeId: string;
+  type: 'routine' | 'emergency' | 'follow-up' | 'third-party-coordination';
+  status: 'planned' | 'in-progress' | 'completed' | 'cancelled';
+  priority: 'low' | 'medium' | 'high' | 'critical';
+  title: string;
+  description: string;
+  patrolDate: string;
+  startTime: string;
+  endTime?: string;
+  patrolTeam: string[];
+  vehicleInfo?: {
+    plateNumber: string;
+    type: string;
+  };
+  weather: {
+    condition: 'sunny' | 'cloudy' | 'rainy' | 'stormy' | 'foggy';
+    temperature?: number;
+    notes?: string;
+  };
+  findings: PatrolFinding[];
+  measurements: CableMeasurement[];
+  summary: string;
+  recommendations: string;
+  nextPatrolDate?: string;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+  completedAt?: string;
+}
